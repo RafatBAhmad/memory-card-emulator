@@ -2,6 +2,11 @@
 #include <list>
 #include <vector>
 #include <algorithm>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <iterator>
+
 using namespace std;
 
 // create a class to store memory command
@@ -132,6 +137,56 @@ int main()
 {
     // create object of memoryCmd class
     memoryCmd fillMemory;
+
+    // read commands from a file
+    fstream cmdFile;
+    cmdFile.open("commands.txt", ios::in);
+    if (cmdFile.is_open())
+    {
+        string cmd;
+
+        while (getline(cmdFile, cmd))
+        {
+            list<string> cmdList;
+            stringstream cmdLine(cmd);
+            do
+            {
+                string cmdPart;
+                cmdLine >> cmdPart;
+                cmdList.push_back(cmdPart);
+            } while (cmdLine);
+
+            if (cmdList.front() == "add" || "Add")
+            {
+                string cmd;
+                cmdList.pop_front();
+                if (cmdList.back() == "true" || "True")
+                {
+                    cout << "hi\n";
+                    cmdList.pop_back();
+                    for (auto i : cmdList)
+                    {
+                        cmd += i;
+                    }
+                    cout << cmd << endl;
+                    Add(cmd, true);
+                }
+                else
+                {
+                    for (auto i : cmdList)
+                    {
+                        cmd += i;
+                    }
+                    cout << cmd << endl;
+                    Add(cmd);
+                }
+            }
+            else if (cmdList.front() == "remove" || "Remove")
+            {
+                cout << "I'm remove API" << endl;
+            }
+        }
+    }
 
     return 0;
 }

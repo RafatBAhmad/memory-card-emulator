@@ -148,13 +148,26 @@ void Execute(memoryCmd fillMemory)
             std::cerr << e.what() << " convert string number to number so please enter a valid delete cmd ex: 'delete 4 7' " << '\n';
         }
     }
+    fstream ResFile;
+    ResFile.open("response.txt", ios::app);
+    if (ResFile.is_open())
+    {
+        ResFile << cmd << " Pass" << endl;
+        ResFile.close();
+    }
 }
 
 void Abort()
 {
     for (string cmd : cmdList)
     {
-        cout << cmd << " failed" << endl;
+        fstream ResFile;
+        ResFile.open("response.txt", ios::app);
+        if (ResFile.is_open())
+        {
+            ResFile << cmd << " failed" << endl;
+            ResFile.close();
+        }
     }
 }
 
@@ -224,7 +237,7 @@ int main()
             }
             else if (cmdList.front() == "abort" || cmdList.front() == "Abort")
             {
-                cout << "I'm abort API" << endl;
+                Abort();
             }
         }
         cmdFile.close();

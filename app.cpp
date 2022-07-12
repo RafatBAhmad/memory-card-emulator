@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <iterator>
+#include <cstring>
 
 using namespace std;
 
@@ -19,7 +20,7 @@ public:
     {
         auto result = memory.begin();
 
-        std::advance(result, LBA);
+        advance(result, LBA);
 
         return *result;
     }
@@ -28,7 +29,7 @@ public:
     {
         auto result = memory.begin();
 
-        std::advance(result, LBA);
+        advance(result, LBA);
 
         *result = value;
     }
@@ -37,8 +38,8 @@ public:
     {
         auto start = memory.begin();
         auto end = memory.begin();
-        std::advance(start, startIndex);
-        std::advance(end, endIndex + 1);
+        advance(start, startIndex);
+        advance(end, endIndex + 1);
         memory.erase(start, end);
     }
 };
@@ -48,11 +49,15 @@ vector<string> cmdList;
 
 void Add(string cmd, bool isQuick = false)
 {
+
     if (isQuick)
     {
         cmdList.insert(cmdList.begin(), cmd);
     }
-    cmdList.push_back(cmd);
+    else
+    {
+        cmdList.push_back(cmd);
+    }
 }
 
 void Remove()
@@ -60,68 +65,88 @@ void Remove()
     cmdList.erase(cmdList.begin());
 }
 
-void Remove(int id)
+void Remove(string id)
 {
-    cmdList.erase(cmdList.begin() + id);
+    int index;
+    try
+    {
+        // here we convert the last character to string then by stoi we take it as integer number
+        // which represents index that we need to remove it.
+        index = stoi(id);
+        cmdList.erase(cmdList.begin() + index);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << " convert string number to number so please enter a valid remove cmd ex: 'remove 1' " << '\n';
+    }
 }
 
 void Execute(memoryCmd fillMemory)
 {
     int index, value, EndIndex;
-    string Svalue, Sindex, SEndIndex;
+    string Svalue, Sindex, SEndIndex; // S for string
     string cmd = cmdList.front();
-    cmdList.erase(cmdList.begin());
 
-    // remove spaces from the string command
-    cmd.erase(remove(cmd.begin(), cmd.end(), ' '), cmd.end());
+    list<string> l_cmd;
+    stringstream cmdLine(cmd);
 
-    char memoryCommands = cmd.front();
+    cmdList.erase(cmdList.begin()); // Delete first command.
 
-    if (memoryCommands == 'r' || memoryCommands == 'R')
+    while (cmdLine)
+    {
+        string cmdPart;
+        cmdLine >> cmdPart;
+        l_cmd.push_back(cmdPart);
+    }
+    l_cmd.pop_back();
+    cout << cmd << endl;
+    if (l_cmd.front() == "read" || l_cmd.front() == "Read")
     {
         try
         {
             // here we convert the last character to string then by stoi we take it as integer number
             // which represents index that we need to read it's value.
-            index = stoi(Sindex += cmd.back());
+            index = stoi(Sindex += l_cmd.back());
+            cout << " The result is: " << fillMemory.Read(index) << endl;
         }
         catch (const std::exception &e)
         {
             std::cerr << e.what() << " convert string number to number so please enter a valid read cmd ex: 'read 1' " << '\n';
         }
-        cout << fillMemory.Read(index) << endl;
     }
 
-    if (memoryCommands == 'w' || memoryCommands == 'W')
+    if (l_cmd.front() == "write" || l_cmd.front() == "Write")
     {
         try
         {
             // here we convert the last tow characters to string then by stoi we take them as integer number.
             // which the last one represents the value and the one before represents the index.
-            value = stoi(Svalue += cmd.back());
-            index = stoi(Sindex += cmd.back());
+            value = stoi(Svalue += l_cmd.back());
+            l_cmd.pop_back();
+            index = stoi(Sindex += l_cmd.back());
+            fillMemory.Write(index, value);
         }
         catch (const std::exception &e)
         {
             std::cerr << e.what() << " convert string number to number so please enter a valid write cmd ex: 'write 1 6' " << '\n';
         }
-        fillMemory.Write(index, value);
     }
 
-    if (memoryCommands == 'd' || memoryCommands == 'D')
+    if (l_cmd.front() == "delete" || l_cmd.front() == "Delete")
     {
         try
         {
             // here we convert the last tow characters to string then by stoi we take them as integer number.
             // which the last one represents the startIndex and the one before represents the endIndex, so we will delete all commands between these two indices and indices included.
-            EndIndex = stoi(SEndIndex += cmd.back());
-            index = stoi(Sindex += cmd.back());
+            EndIndex = stoi(SEndIndex += l_cmd.back());
+            l_cmd.pop_back();
+            index = stoi(Sindex += l_cmd.back());
+            fillMemory.Delete(index, EndIndex);
         }
         catch (const std::exception &e)
         {
             std::cerr << e.what() << " convert string number to number so please enter a valid delete cmd ex: 'delete 4 7' " << '\n';
         }
-        fillMemory.Write(index, EndIndex);
     }
 }
 
@@ -137,56 +162,72 @@ int main()
 {
     // create object of memoryCmd class
     memoryCmd fillMemory;
-
     // read commands from a file
     fstream cmdFile;
+
     cmdFile.open("commands.txt", ios::in);
     if (cmdFile.is_open())
     {
         string cmd;
-
         while (getline(cmdFile, cmd))
         {
             list<string> cmdList;
             stringstream cmdLine(cmd);
-            do
+            while (cmdLine)
             {
                 string cmdPart;
                 cmdLine >> cmdPart;
                 cmdList.push_back(cmdPart);
-            } while (cmdLine);
-
-            if (cmdList.front() == "add" || "Add")
+            }
+            cmdList.pop_back();
+            if (cmdList.front() == "add" || cmdList.front() == "Add")
             {
                 string cmd;
                 cmdList.pop_front();
-                if (cmdList.back() == "true" || "True")
+                if (cmdList.back() == "true" || cmdList.back() == "True")
                 {
-                    cout << "hi\n";
                     cmdList.pop_back();
                     for (auto i : cmdList)
                     {
-                        cmd += i;
+                        cmd += ' ' + i;
                     }
-                    cout << cmd << endl;
                     Add(cmd, true);
                 }
                 else
                 {
                     for (auto i : cmdList)
                     {
-                        cmd += i;
+                        cmd += ' ' + i;
                     }
-                    cout << cmd << endl;
                     Add(cmd);
                 }
             }
-            else if (cmdList.front() == "remove" || "Remove")
+            else if (cmdList.front() == "remove" || cmdList.front() == "Remove")
             {
-                cout << "I'm remove API" << endl;
+
+                if (cmdList.size() == 1)
+                {
+                    Remove();
+                }
+                else if (cmdList.size() == 2)
+                {
+                    Remove(cmdList.back());
+                }
+                else if (cmdList.size() > 2)
+                {
+                    cout << "Bad remove cmd, the good remove cmd comes in these two style => 'remove' or 'remove 2'" << endl;
+                }
+            }
+            else if (cmdList.front() == "execute" || cmdList.front() == "Execute")
+            {
+                Execute(fillMemory);
+            }
+            else if (cmdList.front() == "abort" || cmdList.front() == "Abort")
+            {
+                cout << "I'm abort API" << endl;
             }
         }
+        cmdFile.close();
     }
-
     return 0;
 }

@@ -1,10 +1,11 @@
 add read 0
-Add read 1 true
 add read 5 true
+Add write 5 10 true
 add read 8
+add delete 8 10 true
 add write 8 4 true
-add delete 8 10 true 
+remove 1
 remove
-remove 2
+execute
 execute
 abort

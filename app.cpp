@@ -7,98 +7,7 @@
 #include <sstream>
 #include <iterator>
 #include <cstring>
-
 using namespace std;
-
-/*
-
-
-*/
-class Command
-{
-    int id;
-    int LBA;
-    int data_size;
-    int priority;
-
-public:
-    Command(int id, int LBA, int data_size, int priority)
-    {
-        id = id;
-        LBA = LBA;
-        data_size = data_size;
-        priority = priority;
-    }
-};
-
-class ReadCommand : public Command
-{
-public:
-    ReadCommand(int id, int LBA, int data_size, int priority) : Command(id, LBA, data_size, priority)
-
-    {
-    }
-};
-
-class WriteCommand : public Command
-{
-    vector<uint8_t> data;
-
-public:
-    WriteCommand(int id, int LBA, int data_size, int priority, vector<uint8_t> data) : Command(id, LBA, data_size, priority)
-
-    {
-        data = data;
-    }
-};
-
-class DeleteCommand : public Command
-{
-public:
-    DeleteCommand(int id, int LBA, int data_size, int priority) : Command(id, LBA, data_size, priority)
-
-    {
-    }
-};
-
-class ReadResponce : public Command
-{
-    bool is_succeeded;
-    vector<uint8_t> data;
-
-public:
-    ReadResponce(int id, int LBA, int data_size, int priority, bool is_succeeded, vector<uint8_t> data) : Command(id, LBA, data_size, priority)
-
-    {
-        is_succeeded = is_succeeded;
-        data = data;
-    }
-};
-
-class WriteResponce : public Command
-{
-    bool is_succeeded;
-
-public:
-    WriteResponce(int id, int LBA, int data_size, int priority, bool is_succeeded) : Command(id, LBA, data_size, priority)
-
-    {
-        is_succeeded = is_succeeded;
-    }
-};
-
-class DeleteResponce : public Command
-{
-    bool is_succeeded;
-
-public:
-    DeleteResponce(int id, int LBA, int data_size, int priority, bool is_succeeded) : Command(id, LBA, data_size, priority)
-
-    {
-        is_succeeded = is_succeeded;
-    }
-};
-
 // create a class to store memory command
 class memoryCmd
 {
@@ -108,21 +17,15 @@ public:
     int Read(int LBA)
     {
         auto result = memory.begin();
-
         advance(result, LBA);
-
         return *result;
     }
-
     void Write(int LBA, int value)
     {
         auto result = memory.begin();
-
         advance(result, LBA);
-
         *result = value;
     }
-
     void Delete(int startIndex, int endIndex)
     {
         auto start = memory.begin();
@@ -132,13 +35,10 @@ public:
         memory.erase(start, end);
     }
 };
-
 // create vector of string to store the command
 vector<string> cmdList;
-
 void Add(string cmd, bool isQuick = false)
 {
-
     if (isQuick)
     {
         cmdList.insert(cmdList.begin(), cmd);
@@ -148,13 +48,10 @@ void Add(string cmd, bool isQuick = false)
         cmdList.push_back(cmd);
     }
 }
-
 void Remove()
 {
     cmdList.erase(cmdList.begin());
 }
-
-// overloading Remove() it's type of polymorphism
 void Remove(string id)
 {
     int index;
@@ -170,18 +67,14 @@ void Remove(string id)
         std::cerr << e.what() << " convert string number to number so please enter a valid remove cmd ex: 'remove 1' " << '\n';
     }
 }
-
 void Execute(memoryCmd fillMemory)
 {
     int index, value, EndIndex;
     string Svalue, Sindex, SEndIndex; // S for string
     string cmd = cmdList.front();
-
     list<string> l_cmd;
     stringstream cmdLine(cmd);
-
     cmdList.erase(cmdList.begin()); // Delete first command.
-
     while (cmdLine)
     {
         string cmdPart;
@@ -204,7 +97,6 @@ void Execute(memoryCmd fillMemory)
             std::cerr << e.what() << " convert string number to number so please enter a valid read cmd ex: 'read 1' " << '\n';
         }
     }
-
     if (l_cmd.front() == "write" || l_cmd.front() == "Write")
     {
         try
@@ -221,7 +113,6 @@ void Execute(memoryCmd fillMemory)
             std::cerr << e.what() << " convert string number to number so please enter a valid write cmd ex: 'write 1 6' " << '\n';
         }
     }
-
     if (l_cmd.front() == "delete" || l_cmd.front() == "Delete")
     {
         try
@@ -242,7 +133,7 @@ void Execute(memoryCmd fillMemory)
     ResFile.open("response.txt", ios::app);
     if (ResFile.is_open())
     {
-        ResFile << cmd << " Succeeded" << endl;
+        ResFile << cmd << " Pass" << endl;
         ResFile.close();
     }
 }
@@ -255,7 +146,7 @@ void Abort()
         ResFile.open("response.txt", ios::app);
         if (ResFile.is_open())
         {
-            ResFile << cmd << " Failed" << endl;
+            ResFile << cmd << " failed" << endl;
             ResFile.close();
         }
     }
@@ -267,7 +158,6 @@ int main()
     memoryCmd fillMemory;
     // read commands from a file
     fstream cmdFile;
-
     cmdFile.open("commands.txt", ios::in);
     if (cmdFile.is_open())
     {
@@ -286,7 +176,6 @@ int main()
             if (cmdList.front() == "add" || cmdList.front() == "Add")
             {
                 string cmd;
-
                 cmdList.pop_front();
                 if (cmdList.back() == "true" || cmdList.back() == "True")
                 {
@@ -308,7 +197,6 @@ int main()
             }
             else if (cmdList.front() == "remove" || cmdList.front() == "Remove")
             {
-
                 if (cmdList.size() == 1)
                 {
                     Remove();

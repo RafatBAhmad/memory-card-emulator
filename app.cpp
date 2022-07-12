@@ -10,6 +10,56 @@
 
 using namespace std;
 
+/*
+
+
+*/
+class Command
+{
+    int id;
+    int LBA;
+    int data_size;
+    bool priority;
+
+public:
+    Command(int id, int LBA, int data_size, int priority)
+    {
+        id = id;
+        LBA = LBA;
+        data_size = data_size;
+        priority = priority;
+    }
+};
+
+class ReadCommand : public Command
+{
+};
+
+class WriteCommand : public Command
+{
+    vector<uint8_t> data;
+};
+
+class DeleteCommand : public Command
+{
+};
+
+class ReadResponce : public Command
+{
+    bool is_succeeded;
+    vector<uint8_t> data;
+};
+
+class WriteResponce : public Command
+{
+    bool is_succeeded;
+};
+
+class DeleteResponce : public Command
+{
+    bool is_succeeded;
+};
+
 // create a class to store memory command
 class memoryCmd
 {
@@ -65,6 +115,7 @@ void Remove()
     cmdList.erase(cmdList.begin());
 }
 
+// overloading Remove() it's type of polymorphism
 void Remove(string id)
 {
     int index;
@@ -152,7 +203,7 @@ void Execute(memoryCmd fillMemory)
     ResFile.open("response.txt", ios::app);
     if (ResFile.is_open())
     {
-        ResFile << cmd << " Pass" << endl;
+        ResFile << cmd << " Succeeded" << endl;
         ResFile.close();
     }
 }
@@ -165,7 +216,7 @@ void Abort()
         ResFile.open("response.txt", ios::app);
         if (ResFile.is_open())
         {
-            ResFile << cmd << " failed" << endl;
+            ResFile << cmd << " Failed" << endl;
             ResFile.close();
         }
     }
@@ -196,6 +247,7 @@ int main()
             if (cmdList.front() == "add" || cmdList.front() == "Add")
             {
                 string cmd;
+                Command cmd = Add();
                 cmdList.pop_front();
                 if (cmdList.back() == "true" || cmdList.back() == "True")
                 {

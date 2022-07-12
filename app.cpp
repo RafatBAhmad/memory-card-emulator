@@ -19,7 +19,7 @@ class Command
     int id;
     int LBA;
     int data_size;
-    bool priority;
+    int priority;
 
 public:
     Command(int id, int LBA, int data_size, int priority)
@@ -33,31 +33,70 @@ public:
 
 class ReadCommand : public Command
 {
+public:
+    ReadCommand(int id, int LBA, int data_size, int priority) : Command(id, LBA, data_size, priority)
+
+    {
+    }
 };
 
 class WriteCommand : public Command
 {
     vector<uint8_t> data;
+
+public:
+    WriteCommand(int id, int LBA, int data_size, int priority, vector<uint8_t> data) : Command(id, LBA, data_size, priority)
+
+    {
+        data = data;
+    }
 };
 
 class DeleteCommand : public Command
 {
+public:
+    DeleteCommand(int id, int LBA, int data_size, int priority) : Command(id, LBA, data_size, priority)
+
+    {
+    }
 };
 
 class ReadResponce : public Command
 {
     bool is_succeeded;
     vector<uint8_t> data;
+
+public:
+    ReadResponce(int id, int LBA, int data_size, int priority, bool is_succeeded, vector<uint8_t> data) : Command(id, LBA, data_size, priority)
+
+    {
+        is_succeeded = is_succeeded;
+        data = data;
+    }
 };
 
 class WriteResponce : public Command
 {
     bool is_succeeded;
+
+public:
+    WriteResponce(int id, int LBA, int data_size, int priority, bool is_succeeded) : Command(id, LBA, data_size, priority)
+
+    {
+        is_succeeded = is_succeeded;
+    }
 };
 
 class DeleteResponce : public Command
 {
     bool is_succeeded;
+
+public:
+    DeleteResponce(int id, int LBA, int data_size, int priority, bool is_succeeded) : Command(id, LBA, data_size, priority)
+
+    {
+        is_succeeded = is_succeeded;
+    }
 };
 
 // create a class to store memory command
@@ -247,7 +286,7 @@ int main()
             if (cmdList.front() == "add" || cmdList.front() == "Add")
             {
                 string cmd;
-                Command cmd = Add();
+
                 cmdList.pop_front();
                 if (cmdList.back() == "true" || cmdList.back() == "True")
                 {

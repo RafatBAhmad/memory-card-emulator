@@ -52,6 +52,8 @@ void Remove()
 {
     cmdList.erase(cmdList.begin());
 }
+
+// overlodaing function it's type of polymorphism
 void Remove(string id)
 {
     int index;

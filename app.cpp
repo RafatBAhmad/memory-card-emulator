@@ -7,221 +7,442 @@
 #include <sstream>
 #include <iterator>
 #include <cstring>
+
 using namespace std;
+
+class Command
+{
+    int id;
+    int LBA;
+    int data_size;
+    string type;
+    string cmd_str;
+
+public:
+    Command(string type, int LBA, int data_size, string cmd_str)
+    {
+        this->id = nextID;
+        this->type = type;
+        this->LBA = LBA;
+        this->data_size = data_size;
+        this->cmd_str = cmd_str;
+
+        nextID++;
+    }
+
+    static int nextID;
+
+    int getId()
+    {
+        return id;
+    }
+    int getLBA()
+    {
+        return LBA;
+    }
+    int getDataSize()
+    {
+        return data_size;
+    }
+    string getType()
+    {
+        return type;
+    }
+    string getCommand()
+    {
+        return cmd_str;
+    }
+};
+
+// Initialize static member of class Command
+int Command::nextID = 0;
+
+class ReadCommand : public Command
+{
+public:
+    ReadCommand(int LBA, int data_size, string cmd_str) : Command("Read", LBA, data_size, cmd_str) {}
+};
+
+class WriteCommand : public Command
+{
+    vector<uint8_t> data;
+
+public:
+    WriteCommand(int LBA, int data_size, vector<uint8_t> data, string cmd_str) : Command("Write", LBA, data_size, cmd_str)
+    {
+        this->data = data;
+    }
+
+    vector<uint8_t> getData()
+    {
+        return data;
+    }
+};
+
+class DeleteCommand : public Command
+{
+public:
+    DeleteCommand(int LBA, int data_size, string cmd_str) : Command("Delete", LBA, data_size, cmd_str) {}
+};
+
+class Response
+{
+    Command cmd;
+    bool is_succeeded;
+
+public:
+    Response(Command cmd, bool is_succeeded) : cmd(cmd), is_succeeded(is_succeeded) {}
+
+    string getStatus()
+    {
+        if (is_succeeded)
+        {
+            return "Succeeded";
+        }
+        return "Failed";
+    }
+
+    string getResponceString()
+    {
+        return to_string(cmd.getId()) + ": " + cmd.getCommand() + " " + getStatus();
+    }
+};
+
+class ReadResponce : public Response
+{
+    vector<uint8_t> data;
+
+public:
+    ReadResponce(Command cmd, bool is_succeeded, vector<uint8_t> data) : Response(cmd, is_succeeded), data(data) {}
+
+    vector<uint8_t> getReadData()
+    {
+        return data;
+    }
+};
+
+void Log(Command *cmd, bool success)
+{
+
+    fstream ResFile;
+    ResFile.open("response.txt", ios::app);
+    if (!ResFile.is_open())
+    {
+        return;
+    }
+
+    Response res(*cmd, success);
+    ResFile << res.getResponceString() << endl;
+    ResFile.close();
+}
+
 // create a class to store memory command
 class memoryCmd
 {
-    list<int> memory;
+    vector<uint8_t> memory;
+    vector<bool> isReserved;
 
 public:
-    int Read(int LBA)
+    memoryCmd(int size)
     {
-        auto result = memory.begin();
-        advance(result, LBA);
-        return *result;
+        memory = vector<uint8_t>(size, 0);
+        isReserved = vector<bool>(size, false);
     }
-    void Write(int LBA, int value)
+
+    vector<uint8_t> Read(int LBA, int size)
     {
-        auto result = memory.begin();
-        advance(result, LBA);
-        *result = value;
+        if (LBA < 0 || LBA >= memory.size())
+            return vector<uint8_t>();
+
+        auto startAddress = memory.begin() + LBA;
+        return vector<uint8_t>(startAddress, startAddress + size);
     }
-    void Delete(int startIndex, int endIndex)
+
+    bool Write(int LBA, int size, vector<uint8_t> value)
     {
-        auto start = memory.begin();
-        auto end = memory.begin();
-        advance(start, startIndex);
-        advance(end, endIndex + 1);
-        memory.erase(start, end);
+        if (LBA < 0 || LBA >= memory.size())
+            return false;
+
+        for (int i = 0; i < size; i++)
+        {
+            if (isReserved[LBA + i])
+            {
+                // this memory cell is not empty
+                return false;
+            }
+
+            memory[LBA + i] = value[i];
+            isReserved[LBA + i] = true;
+        }
+        return true;
+    }
+
+    bool Delete(int startIndex, int endIndex)
+    {
+        if (startIndex < 0 || startIndex >= memory.size() || startIndex > endIndex || endIndex > memory.size())
+            return false;
+
+        int index = startIndex;
+        while (index < endIndex)
+        {
+            isReserved[index++] = false;
+        }
+        return true;
+    }
+
+    void Execute(Command *cmd)
+    {
+        bool success = false;
+        if (cmd->getType() == "Write")
+        {
+            WriteCommand *writeCmd = (WriteCommand *)cmd;
+            success = Write(writeCmd->getLBA(), writeCmd->getDataSize(), writeCmd->getData());
+        }
+        else if (cmd->getType() == "Read")
+        {
+            ReadCommand *readCmd = (ReadCommand *)cmd;
+            vector<uint8_t> result = Read(readCmd->getLBA(), readCmd->getDataSize());
+            success = (!result.empty());
+        }
+        else if (cmd->getType() == "Delete")
+        {
+            DeleteCommand *deleteCmd = (DeleteCommand *)cmd;
+            success = Delete(deleteCmd->getLBA(), deleteCmd->getDataSize());
+        }
+
+        Log(cmd, success);
     }
 };
-// create vector of string to store the command
-vector<string> cmdList;
-void Add(string cmd, bool isQuick = false)
-{
-    if (isQuick)
-    {
-        cmdList.insert(cmdList.begin(), cmd);
-    }
-    else
-    {
-        cmdList.push_back(cmd);
-    }
-}
-void Remove()
-{
-    cmdList.erase(cmdList.begin());
-}
 
-// overlodaing function it's type of polymorphism
-void Remove(string id)
+class CommandsQueue
 {
-    int index;
-    try
+private:
+    // create vector of Command to store the command
+    vector<Command *> cmdList;
+
+public:
+    void Add(Command *cmd, bool isQuick = false)
     {
-        // here we convert the last character to string then by stoi we take it as integer number
-        // which represents index that we need to remove it.
-        index = stoi(id);
-        cmdList.erase(cmdList.begin() + index);
+        if (isQuick)
+        {
+            cmdList.insert(cmdList.begin(), cmd);
+        }
+        else
+        {
+            cmdList.push_back(cmd);
+        }
     }
-    catch (const std::exception &e)
+
+    void Remove()
     {
-        std::cerr << e.what() << " convert string number to number so please enter a valid remove cmd ex: 'remove 1' " << '\n';
+        cmdList.erase(cmdList.begin());
     }
-}
-void Execute(memoryCmd fillMemory)
-{
-    int index, value, EndIndex;
-    string Svalue, Sindex, SEndIndex; // S for string
-    string cmd = cmdList.front();
-    list<string> l_cmd;
-    stringstream cmdLine(cmd);
-    cmdList.erase(cmdList.begin()); // Delete first command.
-    while (cmdLine)
-    {
-        string cmdPart;
-        cmdLine >> cmdPart;
-        l_cmd.push_back(cmdPart);
-    }
-    l_cmd.pop_back();
-    cout << cmd << endl;
-    if (l_cmd.front() == "read" || l_cmd.front() == "Read")
+
+    void Remove(string id_string)
     {
         try
         {
             // here we convert the last character to string then by stoi we take it as integer number
-            // which represents index that we need to read it's value.
-            index = stoi(Sindex += l_cmd.back());
-            cout << " The result is: " << fillMemory.Read(index) << endl;
+            // which represents index that we need to remove it.
+            uint8_t id = stoi(id_string);
+
+            for (uint i = 0; i < cmdList.size(); i++)
+            {
+                if (cmdList[i]->getId() == id)
+                {
+                    cmdList.erase(cmdList.begin() + id);
+                    break;
+                }
+            }
         }
-        catch (const std::exception &e)
+        catch (const exception &e)
         {
-            std::cerr << e.what() << " convert string number to number so please enter a valid read cmd ex: 'read 1' " << '\n';
+            cerr << e.what() << " convert string number to number so please enter a valid remove cmd ex: 'remove 1' " << endl;
         }
     }
-    if (l_cmd.front() == "write" || l_cmd.front() == "Write")
+
+    Command *GetNextCommand()
     {
-        try
-        {
-            // here we convert the last tow characters to string then by stoi we take them as integer number.
-            // which the last one represents the value and the one before represents the index.
-            value = stoi(Svalue += l_cmd.back());
-            l_cmd.pop_back();
-            index = stoi(Sindex += l_cmd.back());
-            fillMemory.Write(index, value);
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << e.what() << " convert string number to number so please enter a valid write cmd ex: 'write 1 6' " << '\n';
-        }
+        if (cmdList.empty())
+            return nullptr;
+
+        Command *cmd = cmdList.front();
+        cmdList.erase(cmdList.begin()); // Delete first command.
+        return cmd;
     }
-    if (l_cmd.front() == "delete" || l_cmd.front() == "Delete")
+
+    void Abort()
     {
-        try
+        while (true)
         {
-            // here we convert the last tow characters to string then by stoi we take them as integer number.
-            // which the last one represents the startIndex and the one before represents the endIndex, so we will delete all commands between these two indices and indices included.
-            EndIndex = stoi(SEndIndex += l_cmd.back());
-            l_cmd.pop_back();
-            index = stoi(Sindex += l_cmd.back());
-            fillMemory.Delete(index, EndIndex);
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << e.what() << " convert string number to number so please enter a valid delete cmd ex: 'delete 4 7' " << '\n';
+            Command *nextCmd = GetNextCommand();
+            if (nextCmd == nullptr)
+            {
+                break;
+            }
+
+            Log(nextCmd, false);
         }
     }
-    fstream ResFile;
-    ResFile.open("response.txt", ios::app);
-    if (ResFile.is_open())
+};
+
+vector<string> ReadFile(string path)
+{
+    fstream file;
+
+    file.open(path, ios::in);
+    if (!file.is_open())
     {
-        ResFile << cmd << " Pass" << endl;
-        ResFile.close();
+        cerr << "Connot open file" << path << endl;
+        return vector<string>();
     }
+
+    vector<string> lines;
+    string line;
+    while (getline(file, line))
+    {
+        if (!line.empty())
+        {
+            lines.push_back(line);
+        }
+    }
+
+    file.close();
+
+    if (lines.empty())
+    {
+        cerr << path << " file is empty" << endl;
+    }
+
+    return lines;
 }
 
-void Abort()
+list<string> SplitCommandToList(string cmd)
 {
-    for (string cmd : cmdList)
+    list<string> cmdList;
+    stringstream cmdLine(cmd);
+    while (cmdLine)
     {
-        fstream ResFile;
-        ResFile.open("response.txt", ios::app);
-        if (ResFile.is_open())
-        {
-            ResFile << cmd << " failed" << endl;
-            ResFile.close();
-        }
+        string cmdPart;
+        cmdLine >> cmdPart;
+        cmdList.push_back(cmdPart);
     }
+    cmdList.pop_back();
+
+    return cmdList;
+}
+
+bool StrCompare(string s1, string s2)
+{
+    if (s1.size() != s2.size())
+        return false;
+    for (uint i = 0; i < s1.size(); i++)
+        if (tolower(s1[i]) != tolower(s2[i]))
+            return false;
+    return true;
+}
+
+Command *StringToCommand(string cmdStr)
+{
+    Command *command;
+
+    list<string> cmdList = SplitCommandToList(cmdStr);
+    if (cmdList.size() < 3)
+    {
+        cerr << "Invalid commands: " << cmdStr << endl;
+        return nullptr;
+    }
+
+    string op = cmdList.front();
+    cmdList.pop_front();
+    int LBA = atoi(cmdList.front().c_str());
+    cmdList.pop_front();
+    int size = atoi(cmdList.front().c_str());
+    cmdList.pop_front();
+
+    if (StrCompare(op, "read"))
+    {
+        return new ReadCommand(LBA, size, cmdStr);
+    }
+
+    if (StrCompare(op, "write"))
+    {
+        vector<uint8_t> data;
+        while (!cmdList.empty())
+        {
+            data.push_back(atoi(cmdList.front().c_str()));
+            cmdList.pop_front();
+        }
+
+        return new WriteCommand(LBA, size, data, cmdStr);
+    }
+
+    if (StrCompare(op, "delete"))
+    {
+        return new DeleteCommand(LBA, size, cmdStr);
+    }
+
+    return nullptr;
 }
 
 int main()
 {
+    const string QUICK_STR = "quick";
+
     // create object of memoryCmd class
-    memoryCmd fillMemory;
+    memoryCmd fillMemory(100);
+    // create a priority queue for the commands
+    CommandsQueue cmdQueue;
     // read commands from a file
-    fstream cmdFile;
-    cmdFile.open("commands.txt", ios::in);
-    if (cmdFile.is_open())
+    vector<string> fileLines = ReadFile("commands.txt");
+
+    for (auto &cmdLine : fileLines)
     {
-        string cmd;
-        while (getline(cmdFile, cmd))
+        int quickPos = cmdLine.find(QUICK_STR);
+        bool isQuick = (quickPos != -1);
+        if (isQuick)
         {
-            list<string> cmdList;
-            stringstream cmdLine(cmd);
-            while (cmdLine)
+            // remove 'quick' from cmdLine
+            cmdLine.erase(quickPos, QUICK_STR.length());
+        }
+
+        int spacePos = cmdLine.find(" ");
+        string queueOperator = cmdLine.substr(0, spacePos);
+        string cmd = cmdLine.substr(spacePos + 1);
+        bool hasArguments = (spacePos != -1);
+
+        if (StrCompare(queueOperator, "add"))
+        {
+            Command *command = StringToCommand(cmd);
+            if (command != nullptr)
             {
-                string cmdPart;
-                cmdLine >> cmdPart;
-                cmdList.push_back(cmdPart);
-            }
-            cmdList.pop_back();
-            if (cmdList.front() == "add" || cmdList.front() == "Add")
-            {
-                string cmd;
-                cmdList.pop_front();
-                if (cmdList.back() == "true" || cmdList.back() == "True")
-                {
-                    cmdList.pop_back();
-                    for (auto i : cmdList)
-                    {
-                        cmd += ' ' + i;
-                    }
-                    Add(cmd, true);
-                }
-                else
-                {
-                    for (auto i : cmdList)
-                    {
-                        cmd += ' ' + i;
-                    }
-                    Add(cmd);
-                }
-            }
-            else if (cmdList.front() == "remove" || cmdList.front() == "Remove")
-            {
-                if (cmdList.size() == 1)
-                {
-                    Remove();
-                }
-                else if (cmdList.size() == 2)
-                {
-                    Remove(cmdList.back());
-                }
-                else if (cmdList.size() > 2)
-                {
-                    cout << "Bad remove cmd, the good remove cmd comes in these two style => 'remove' or 'remove 2'" << endl;
-                }
-            }
-            else if (cmdList.front() == "execute" || cmdList.front() == "Execute")
-            {
-                Execute(fillMemory);
-            }
-            else if (cmdList.front() == "abort" || cmdList.front() == "Abort")
-            {
-                Abort();
+                cmdQueue.Add(command, isQuick);
             }
         }
-        cmdFile.close();
+        else if (StrCompare(queueOperator, "remove"))
+        {
+            if (hasArguments)
+            {
+                cmdQueue.Remove(cmd);
+            }
+            else
+            {
+                cmdQueue.Remove();
+            }
+        }
+        else if (StrCompare(queueOperator, "execute"))
+        {
+            fillMemory.Execute(cmdQueue.GetNextCommand());
+        }
+        else if (StrCompare(queueOperator, "abort"))
+        {
+            cmdQueue.Abort();
+        }
+        else
+        {
+            cerr << "Invalid queue operator: " << cmdLine << endl;
+        }
     }
+
     return 0;
 }

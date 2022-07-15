@@ -1,9 +1,9 @@
-add read 0
-add read 5 true
-Add write 5 11 true
-add read 8
-add delete 8 10 true
-add write 8 4 true
+add read 0 2
+add quick read 5 1
+Add write 5 1 11
+add quick read 8 8
+add delete 8 10
+add quick write 8 4 1 2 3 4
 remove 1
 remove
 execute

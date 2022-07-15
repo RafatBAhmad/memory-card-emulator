@@ -1,10 +1,14 @@
- read 0 failed
- read 8 failed
- write 5 10 Pass
- read 5 Pass
- read 0 failed
- read 8 failed
- write 5 11 Pass
- read 5 Pass
- read 0 failed
- read 8 failed
+1:  read 5 1 Succeeded
+0: read 0 2 Succeeded
+2: write 5 1 11 Failed
+4: delete 8 10 Failed
+1:  read 5 1 Succeeded
+0: read 0 2 Succeeded
+2: write 5 1 11 Failed
+4: delete 8 10 Failed
+5:  write 8 4 1 2 3 4 Succeeded
+3:  read 8 8 Succeeded
+1:  read 5 1 Failed
+0: read 0 2 Failed
+2: write 5 1 11 Failed
+4: delete 8 10 Failed
